@@ -1,0 +1,256 @@
+---
+output: html_document
+---
+
+## Peer-graded Assignment 2. Exploration of the US NOAA Storm Database
+
+#### Synopsis
+
+In this report, we are exploring a US Storm Database, in order to understand how storms and other severe weather events can be a risk to communities, both in terms of health and the economy. Severe weather events can cause deaths/injuries and property/crop damage, and understanding the risk is important to prevent negative outcomes in the future. The analysis of this data show that tornados, TSTM Wind and floods have the most harmful effects on health, leading to the highest numbers of deaths and injuries. The most detrimental weather events for the economy are floods, which create the largest property damage, and drought, which cause the largest damagage in crop. 
+
+#### Data Processing 
+
+The data used for this report are from the The US National Oceanic and Atmospheric Administration's (NOAA) Storm Database. Data refer to the years between 1950 and 2011. 
+
+##### Reading in the data
+
+The data is downloaded from the Coursera course website. The file is compressed with the bzip2 algorithm. Data are loaded into R using read.csv. After decompression, data are in a comma-separated-value file. 
+```{r options(knitr.duplicate.label = 'allow')}
+
+```
+
+```{r, echo=TRUE}
+data <- read.csv("repdata%2Fdata%2FStormData.csv.bz2")
+```
+
+Loading Libraries
+```{r, echo=TRUE}
+library(ggplot2) # for creating the plots
+library(gridExtra) # to assign plots to one figure
+
+```
+
+Checking of the data
+```{r, echo=TRUE, results='hide'}
+str(data)
+summary(data) 
+head(data[, 1:10])
+tail(data[, 1:10])
+```
+
+```{r, echo=TRUE}
+dim(data)
+```
+The dataset includes 902297 rows and 37 columns/variables. 
+
+```{r, echo=TRUE}
+names(data) 
+```
+
+In order to answer the research questions, data have to be prepared first. In order to investigate the impact of severe weather (event type) on health, we look at the variables fatalities and injuries. To examine the impact of severe weather on the economy, we look at property and crop damage. 
+```{r, echo=TRUE, results='hide'}
+# Check for missing values
+# event type
+mean(is.na(data$EVTYPE)) # there are no missing values for Eventtype
+
+# Fatalities
+mean(is.na(data$FATALITIES)) # there are no missing values for Fatalities
+
+# Injuries
+mean(is.na(data$INJURIES)) # there are no missing values for Injuries
+
+# Property damage
+mean(is.na(data$PROPDMG)) # there are no missing values for PROPDMG
+
+# Unit of property damage amount
+mean(is.na(data$PROPDMGEXP)) # there are no missing values for PROPDMGEXP
+
+# Crop damage
+mean(is.na(data$CROPDMG)) # there are no missing values for CROPDMG
+
+# Unit of crop damage amount
+mean(is.na(data$CROPDMGEXP)) # there are no missing values for CROPDMGEXP
+
+```
+There are no missing values in the variables that we are planning to analyse.
+
+The variables PROPDMGEXP and  CROPDMGEXP contain the letters K, M, and B. Looking at the documentation of the dataset we see that these abbreviations refer to the size, i.e. the exponent, of the variables PROPDMG and CROPDMG: “K” stands for thousands, “M” for millions, and “B” for billions. 
+We create new variables PROPDMGNUM and CROPDMGNUM that include the damage in number ($). There are some small letters such as "h" or "m" which appear to be errors from when the data were entered. These are ignored in this report. 
+```{r}
+
+summary(data$PROPDMGEXP) 
+
+summary(data$CROPDMGEXP)
+
+data$PROPDMGNUM <-ifelse((data$PROPDMGEXP=="H"),data$PROPDMG*100, 
+                    ifelse((data$PROPDMGEXP=="K"),data$PROPDMG*1000, 
+                         ifelse((data$PROPDMGEXP=="M"), data$PROPDMG*1000000,  
+                             ifelse((data$PROPDMGEXP=="B"), data$PROPDMG*1000000000,0))))
+
+data$CROPDMGNUM <-ifelse((data$CROPDMGEXP=="H"), data$CROPDMG*100, 
+                    ifelse((data$CROPDMGEXP=="K"), data$CROPDMG*1000, 
+                         ifelse((data$CROPDMGEXP=="M"),data$CROPDMG*1000000,  
+                             ifelse((data$CROPDMGEXP=="B"),data$CROPDMG*1000000000,0))))
+
+```
+
+
+
+Get the number of fatalities per event type
+```{r}
+# aggregate data for 'event type' to get total number per event type 
+data_fatalities <- aggregate(data$FATALITIES, by=list(data$EVTYPE), FUN=sum)
+
+# changing variable names that R produced via aggregate #
+colnames(data_fatalities) <-cbind("EVTYPE", "FATALITIES")
+
+# get mean total number fatalities
+summary(data_fatalities) 
+
+# 
+```
+
+Get the number of injuries per event type
+```{r}
+# aggregate data for 'event type' to get total number per event type 
+data_injuries <- aggregate(data$INJURIES, by=list(data$EVTYPE), FUN=sum)
+
+# changing variable names that R produced via aggregate #
+colnames(data_injuries) <-cbind("EVTYPE", "INJURIES")
+
+# get mean total number of injuries
+summary(data_injuries) 
+
+```
+
+Get property damage per event type
+```{r}
+# aggregate data for 'event type' to get total number per event type 
+data_property <- aggregate(data$PROPDMGNUM, by=list(data$EVTYPE), FUN=sum)
+
+# changing variable names that R produced via aggregate #
+colnames(data_property) <-cbind("EVTYPE", "PROPDAMAGE")
+
+# get mean total number fatalities
+summary(data_property) 
+
+# 
+```
+
+Get the crop damage per event type
+```{r}
+# aggregate data for 'event type' to get total number per event type 
+data_crop <- aggregate(data$CROPDMGNUM, by=list(data$EVTYPE), FUN=sum)
+
+# changing variable names that R produced via aggregate #
+colnames(data_crop) <-cbind("EVTYPE", "CROPDAMAGE")
+
+# get mean total number of injuries
+summary(data_crop) 
+
+```
+
+
+#### Results
+
+##### 1. Which event type, across the US, is most harmful with respect to fatalities?
+```{r, echo=TRUE}
+top_fatalities <- data_fatalities[data_fatalities$FATALITIES >= data_fatalities$FATALITIES[order(data_fatalities$FATALITIES, decreasing=TRUE)][10] , ]
+
+top_fatalities
+
+```
+
+The weather event with the largest number of fatalities across the US is the tornado (5633 fatalities), followed by excessive heat (1903 fatalities) and flash floods (978 fatalities).
+
+
+Which event type, across the US, is most harmful with respect to injuries?
+```{r, echo=TRUE}
+top_injuries <- data_injuries[data_injuries$INJURIES >= data_injuries$INJURIES[order(data_injuries$INJURIES, decreasing=TRUE)][10] , ]
+
+top_injuries
+           
+```
+
+The weather event with the largest number of injuries across the US is the tornado (91346 injuries), followed by TSTM Wind (6957 injuries) and floods (6789 injuries).
+
+Plot of the effect of weather events on fatalities and injuries in the US.
+```{r, recho=TRUE}
+# Plot fatalities as a measure of event type
+
+plot_fatalities <-ggplot(top_fatalities,aes(x=EVTYPE, y=FATALITIES, fill=EVTYPE)) +  
+  stat_summary(fun.data=mean_cl_normal,position=position_dodge(0.95),geom="errorbar") +
+  stat_summary(fun.y=mean,position=position_dodge(width=0.95),geom="bar") + 
+    ylab("Number of fatalities") +
+    xlab("Type of weather event") +
+    theme(axis.text.x=element_text(angle=60, hjust = 1)) +
+    ggtitle("10 most severe weather events across the US") 
+plot_fatalities
+
+# Plot injuries as a measure of event type
+
+plot_injuries <-ggplot(top_injuries,aes(x=EVTYPE, y=INJURIES, fill=EVTYPE)) +  
+  stat_summary(fun.data=mean_cl_normal,position=position_dodge(0.95),geom="errorbar") +
+  stat_summary(fun.y=mean,position=position_dodge(width=0.95),geom="bar") + 
+    ylab("Number of injuries") +
+    xlab("Type of weather event") +
+    theme(axis.text.x=element_text(angle=60, hjust = 1)) +
+    ggtitle("10 most severe weather events across the US") 
+plot_injuries
+
+```
+
+
+##### 2. Across the United States, which types of events have the greatest economic consequences?
+
+We look at property damage (PROPDMGNUM) and crop damage (CROPDMGNUN). 
+
+1. Property damage
+```{r, echo=TRUE}
+top_propertydamage <- data_property[data_property$PROPDAMAGE >= data_property$PROPDAMAGE[order(data_property$PROPDAMAGE, decreasing=TRUE)][10] , ]
+
+top_propertydamage
+
+```
+
+The weather event with the largest property damage across the US is flood, followed by huricane/typhoon and tornado. 
+
+2. Crop damage
+```{r, echo=TRUE}
+top_cropdamage <- data_crop[data_crop$CROPDAMAGE >= data_crop$CROPDAMAGE[order(data_crop$CROPDAMAGE, decreasing=TRUE)][10] , ]
+
+top_cropdamage
+           
+```
+
+The weather event with the biggest effect on crop damage is drought, followed by frost/freeze and ice storm as well as river flood. 
+
+Plot of the effect of weather events on the economy (property and crop damage) in the US.
+```{r, echo=TRUE}
+# Plot property damage as a measure of event type
+
+plot_property <-ggplot(top_propertydamage,aes(x=EVTYPE, y=PROPDAMAGE, fill=EVTYPE)) +  
+  stat_summary(fun.data=mean_cl_normal,position=position_dodge(0.95),geom="errorbar") +
+  stat_summary(fun.y=mean,position=position_dodge(width=0.95),geom="bar") + 
+    ylab("Property damage in $") +
+    xlab("Type of weather event") +
+    theme(axis.text.x=element_text(angle=60, hjust = 1)) +
+    ggtitle("10 most severe weather events across the US") 
+
+
+# Plot crop damage as a measure of event type
+
+plot_crop <-ggplot(top_cropdamage,aes(x=EVTYPE, y=CROPDAMAGE, fill=EVTYPE)) +  
+  stat_summary(fun.data=mean_cl_normal,position=position_dodge(0.95),geom="errorbar") +
+  stat_summary(fun.y=mean,position=position_dodge(width=0.95),geom="bar") + 
+    ylab("Crop damage in $") +
+    xlab("Type of weather event") +
+    theme(axis.text.x=element_text(angle=60, hjust = 1)) +
+    ggtitle("10 most severe weather events across the US") 
+
+# Assign both plots into one figure
+
+grid.arrange(plot_property, plot_crop, nrow=1, widths=c(4, 4))
+
+```
+
